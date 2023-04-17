@@ -217,7 +217,7 @@ function updateEmployRole() {
       return;
     }
     console.table(results);
-    
+
     inquirer
       .prompt([
         {
