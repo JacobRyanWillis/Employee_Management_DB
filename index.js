@@ -150,28 +150,18 @@ function addRole() {
 }
 
 async function addEmployee() {
-  var [roles] = await db.promise().query("SELECT * FROM role");
-  var [employee] = await db
-    .promise()
-    .query(
-      "SELECT id, first_name, last_name FROM employee WHERE manager_id IS NULL"
-    );
-  const managerChoices = employee.map(({ id, first_name, last_name }) => ({
-    name: `${first_name} ${last_name}`,
-    value: id,
-  }));
+  const [roles] = await db.promise().query("SELECT * FROM role");
+  const [employees] = await db.promise().query("SELECT * FROM employee WHERE manager_id IS NULL");
+
   const roleChoices = roles.map(({ id, title }) => ({
     name: title,
     value: id,
   }));
-  const roleIds = roles.reduce((acc, { id }) => {
-    acc[id] = id;
-    return acc;
-  }, {});
-  const managerIds = employee.reduce((acc, { id }) => {
-    acc[id] = id;
-    return acc;
-  }, {});
+
+  const managerChoices = employees.map(({ id, first_name, last_name }) => ({
+    name: `${first_name} ${last_name}`,
+    value: id,
+  }));
 
   inquirer
     .prompt([
@@ -198,32 +188,25 @@ async function addEmployee() {
       },
       {
         type: "list",
-        name: "manager",
+        name: "manager_id",
         message: "Who is the employee's manager?",
         choices: managerChoices,
         when: (answers) => !answers.is_manager, // Only ask this question if the new employee is not a manager
       },
     ])
     .then((answers) => {
-      const roleId = roleIds[answers.role];
-      let managerId = null;
-      if (answers.is_manager) {
-        managerId = managerIds[answers.manager];
-      }
-      db.query(
-        `INSERT INTO employee (first_name, last_name, role_id, manager_id) 
-        VALUES (?, ?, ?, ?)`,
-        [answers.first_name, answers.last_name, roleId, managerId],
-        (err, result) => {
-          if (err) throw err;
-          console.log(
-            `Added ${answers.first_name} ${answers.last_name} to the database.`
-          );
-          appMenu();
-        }
-      );
+      const { first_name, last_name, role, is_manager, manager_id } = answers;
+      const sql = "INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)";
+      const params = [first_name, last_name, role, is_manager ? null : manager_id];
+      db.query(sql, params, (err, result) => {
+        if (err) throw err;
+        console.log(`Added ${first_name} ${last_name} to the database.`);
+        appMenu();
+      });
     });
 }
+
+
 
 
 async function updateEmployRole() {
