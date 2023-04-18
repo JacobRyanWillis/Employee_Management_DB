@@ -151,15 +151,19 @@ function addRole() {
 
 async function addEmployee() {
   var [roles] = await db.promise().query("SELECT * FROM role");
-  var [employee] = await db.promise().query("SELECT id, first_name, last_name FROM employee WHERE manager_id IS NULL");
-  const managerChoices = employee.map(({id, first_name, last_name}) => ({
+  var [employee] = await db
+    .promise()
+    .query(
+      "SELECT id, first_name, last_name FROM employee WHERE manager_id IS NULL"
+    );
+  const managerChoices = employee.map(({ id, first_name, last_name }) => ({
     name: `${first_name} ${last_name}`,
-    value: id
-  }))
-  const roleChoices = roles.map(({id, title})=>({
+    value: id,
+  }));
+  const roleChoices = roles.map(({ id, title }) => ({
     name: title,
-    value: id
-  }))
+    value: id,
+  }));
 
   inquirer
     .prompt([
@@ -213,56 +217,42 @@ async function addEmployee() {
     });
 }
 
-
-function updateEmployRole() {
-  db.query("SELECT * FROM employee", function (err, employees) {
-    if (err) {
-      console.log(err);
-      return;
-    }
+async function updateEmployRole() {
+  try {
+    const [employees] = await db.query.promise("SELECT * FROM employee");
     const employeeChoices = employees.map((employee) => ({
       name: `${employee.first_name} ${employee.last_name}`,
       value: employee.id,
     }));
 
-    db.query("SELECT * FROM role", function (err, roles) {
-      if (err) {
-        console.log(err);
-        return;
-      }
-      const roleChoices = roles.map((role) => ({
-        name: role.title,
-        value: role.id,
-      }));
+    const [roles] = await db.query.promise("SELECT * FROM role");
+    const roleChoices = roles.map((role) => ({
+      name: role.title,
+      value: role.id,
+    }));
 
-      inquirer
-        .prompt([
-          {
-            type: "list",
-            message: "Which employee's role do you want to update?",
-            name: "employeeId",
-            choices: employeeChoices,
-          },
-          {
-            type: "list",
-            message: "Which role do you want to assign the selected employee?",
-            name: "roleId",
-            choices: roleChoices,
-          },
-        ])
-        .then(function (answers) {
-          db.query(
-            "UPDATE employee SET role_id = ? WHERE id = ?",
-            [answers.roleId, answers.employeeId],
-            function (err) {
-              if (err) {
-                console.log(err);
-                return;
-              }
-              console.log("Successfully updated employee's role!");
-            }
-          );
-        });
-    });
-  });
+    const answers = await inquirer.prompt([
+      {
+        type: "list",
+        message: "Which employee's role do you want to update?",
+        name: "employeeId",
+        choices: employeeChoices,
+      },
+      {
+        type: "list",
+        message: "Which role do you want to assign the selected employee?",
+        name: "roleId",
+        choices: roleChoices,
+      },
+    ]);
+
+    await db.query.promise("UPDATE employee SET role_id = ? WHERE id = ?", [
+      answers.roleId,
+      answers.employeeId,
+    ]);
+
+    console.log("Successfully updated employee's role!");
+  } catch (err) {
+    console.log(err);
+  }
 }
