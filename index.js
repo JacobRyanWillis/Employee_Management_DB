@@ -34,7 +34,7 @@ function appMenu() {
         case "Add a department":
           addDepartment();
           break;
-        case "Add a Role":
+        case "Add a role":
           addRole();
           break;
         case "Add an employee":
@@ -164,6 +164,14 @@ async function addEmployee() {
     name: title,
     value: id,
   }));
+  const roleIds = roles.reduce((acc, { id }) => {
+    acc[id] = id;
+    return acc;
+  }, {});
+  const managerIds = employee.reduce((acc, { id }) => {
+    acc[id] = id;
+    return acc;
+  }, {});
 
   inquirer
     .prompt([
@@ -193,14 +201,14 @@ async function addEmployee() {
         name: "manager",
         message: "Who is the employee's manager?",
         choices: managerChoices,
-        when: (answers) => answers.is_manager, // Only ask this question if the new employee is a manager
+        when: (answers) => !answers.is_manager, // Only ask this question if the new employee is not a manager
       },
     ])
     .then((answers) => {
-      const roleId = roleIds[roleChoices.indexOf(answers.role)];
+      const roleId = roleIds[answers.role];
       let managerId = null;
       if (answers.is_manager) {
-        managerId = managerIds[managerChoices.indexOf(answers.manager)];
+        managerId = managerIds[answers.manager];
       }
       db.query(
         `INSERT INTO employee (first_name, last_name, role_id, manager_id) 
@@ -217,15 +225,16 @@ async function addEmployee() {
     });
 }
 
+
 async function updateEmployRole() {
   try {
-    const [employees] = await db.query.promise("SELECT * FROM employee");
+    const [employees] = await db.promise().query("SELECT * FROM employee");
     const employeeChoices = employees.map((employee) => ({
       name: `${employee.first_name} ${employee.last_name}`,
       value: employee.id,
     }));
 
-    const [roles] = await db.query.promise("SELECT * FROM role");
+    const [roles] = await db.promise().query("SELECT * FROM role");
     const roleChoices = roles.map((role) => ({
       name: role.title,
       value: role.id,
@@ -246,7 +255,7 @@ async function updateEmployRole() {
       },
     ]);
 
-    await db.query.promise("UPDATE employee SET role_id = ? WHERE id = ?", [
+    await db.promise().query("UPDATE employee SET role_id = ? WHERE id = ?", [
       answers.roleId,
       answers.employeeId,
     ]);
@@ -255,4 +264,5 @@ async function updateEmployRole() {
   } catch (err) {
     console.log(err);
   }
+  appMenu();
 }
